@@ -20,6 +20,10 @@ food products database. No API key required.
 | `search_products(query, page_size=5)` | Search products by name or brand; returns barcodes + a nutrition summary. |
 | `get_nutrition_scores(barcode)` | Nutri-Score (A–E), NOVA processing group (1–4), and Eco-Score for a product. |
 | `compare_products(barcodes)` | Side-by-side per-100g comparison table for 2+ products. |
+| `add_or_update_product(...)` | **Optional / opt-in.** Create or edit a product. Only enabled when credentials are set (see below). |
+
+Reading needs **no API key or account** — it's open data. Only the optional write
+tool requires an Open Food Facts login.
 
 ## Quick start
 
@@ -67,6 +71,43 @@ MCP config:
   }
 }
 ```
+
+## Optional: write support (adding/editing products)
+
+By default the server is **read-only** — no account, no risk. If you want the LLM
+to be able to contribute or correct product data, enable the `add_or_update_product`
+tool by providing an [Open Food Facts account](https://world.openfoodfacts.org/):
+
+| Env var | Description |
+| --- | --- |
+| `OFF_USERNAME` | Your account **username** (not your email). Enables writes when set with the password. |
+| `OFF_PASSWORD` | Your account password. |
+| `OFF_ENVIRONMENT` | `sandbox` (default) or `production`. |
+
+**Writes go to the [sandbox](https://world.openfoodfacts.net) by default**, so you can
+test safely without touching the real database. Set `OFF_ENVIRONMENT=production` only
+when you deliberately want to edit the live, public database. Sandbox accounts are
+separate from production accounts — register on each site you target.
+
+```json
+{
+  "mcpServers": {
+    "nutriclarity": {
+      "command": "uvx",
+      "args": ["nutriclarity-mcp"],
+      "env": {
+        "OFF_USERNAME": "your-username",
+        "OFF_PASSWORD": "your-password",
+        "OFF_ENVIRONMENT": "sandbox"
+      }
+    }
+  }
+}
+```
+
+> ⚠️ Open Food Facts is a shared, public database used by millions. If you enable
+> production writes, make sure the data you submit is accurate and taken from the
+> real product label. The tool changes only the fields you pass.
 
 ## Local development
 

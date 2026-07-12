@@ -6,12 +6,12 @@
     "url": "https://github.com/nitishkp001/nutriclarity-mcp",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "nutriclarity-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       }
@@ -19,7 +19,7 @@
     {
       "registryType": "oci",
       "identifier": "ghcr.io/nitishkp001/nutriclarity-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       }

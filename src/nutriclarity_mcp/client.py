@@ -131,3 +131,90 @@ class OpenFoodFactsClient:
             raise OpenFoodFactsError("Open Food Facts returned malformed JSON.") from exc
 
         return data.get("products", []) or []
+
+
+class OpenFoodFactsWriteClient:
+    """Async client for the authenticated Add/Edit product endpoint.
+
+    Writes go to whichever ``base_url`` is passed (sandbox by default via
+    ``config.load_write_config``). Credentials are sent as ``user_id`` /
+    ``password`` POST fields, as required by Open Food Facts.
+    """
+
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        *,
+        base_url: str,
+        http_basic_auth: tuple[str, str] | None = None,
+        timeout: float = 20.0,
+    ) -> None:
+        self._username = username
+        self._password = password
+        self._base_url = base_url.rstrip("/")
+        self._client = httpx.AsyncClient(
+            base_url=self._base_url,
+            timeout=timeout,
+            headers={"User-Agent": USER_AGENT},
+            follow_redirects=True,
+            # Sandbox host is gated behind HTTP Basic Auth; production is not.
+            auth=httpx.BasicAuth(*http_basic_auth) if http_basic_auth else None,
+        )
+
+    async def __aenter__(self) -> OpenFoodFactsWriteClient:
+        return self
+
+    async def __aexit__(self, *_exc: object) -> None:
+        await self.aclose()
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def write_product(self, barcode: str, fields: dict[str, str]) -> dict[str, Any]:
+        """Create or update a product. ``fields`` are Open Food Facts form params.
+
+        Raises:
+            OpenFoodFactsError: on network/HTTP failures or a rejected write.
+        """
+        barcode = barcode.strip()
+        if not barcode.isdigit():
+            raise ValueError("Barcode must contain digits only (EAN/UPC).")
+
+        payload: dict[str, str] = {
+            "code": barcode,
+            "user_id": self._username,
+            "password": self._password,
+            # Identify the client for Open Food Facts moderation.
+            "app_name": "nutriclarity-mcp",
+            "app_version": __version__,
+            **fields,
+        }
+
+        try:
+            resp = await self._client.post("/cgi/product_jqm2.pl", data=payload)
+        except httpx.HTTPError as exc:
+            raise OpenFoodFactsError(f"Failed to reach Open Food Facts: {exc}") from exc
+
+        # A wrong account login is reported as 401/403 with an HTML error page.
+        if resp.status_code in (401, 403):
+            raise OpenFoodFactsError(
+                "Authentication failed. Check OFF_USERNAME (your account username, "
+                "not email) and OFF_PASSWORD, and that the account exists on this "
+                "environment (sandbox accounts are separate from production)."
+            )
+
+        try:
+            resp.raise_for_status()
+            data = resp.json()
+        except httpx.HTTPError as exc:
+            raise OpenFoodFactsError(f"Failed to reach Open Food Facts: {exc}") from exc
+        except ValueError as exc:
+            raise OpenFoodFactsError("Open Food Facts returned a non-JSON response.") from exc
+
+        # status == 1 means the write succeeded.
+        if data.get("status") != 1:
+            reason = data.get("status_verbose") or "unknown error"
+            raise OpenFoodFactsError(f"Write was rejected: {reason}")
+
+        return data

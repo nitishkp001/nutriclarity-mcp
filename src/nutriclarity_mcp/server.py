@@ -9,8 +9,10 @@ from fastmcp import FastMCP
 from .client import (
     OpenFoodFactsClient,
     OpenFoodFactsError,
+    OpenFoodFactsWriteClient,
     ProductNotFoundError,
 )
+from .config import load_write_config
 from .formatters import (
     format_comparison,
     format_product,
@@ -118,6 +120,114 @@ async def compare_products(barcodes: list[str]) -> str:
     if problems:
         out += "\n\nCould not load:\n" + "\n".join(problems)
     return out
+
+
+# --- Optional write support (add/edit products) ---------------------------
+# These tools are registered only when OFF_USERNAME and OFF_PASSWORD are set.
+# Writes target the Open Food Facts sandbox unless OFF_ENVIRONMENT=production.
+
+# Maps friendly tool args -> (Open Food Facts nutriment key, unit).
+_NUTRIMENT_MAP: dict[str, tuple[str, str]] = {
+    "energy_kcal": ("energy-kcal", "kcal"),
+    "fat": ("fat", "g"),
+    "saturated_fat": ("saturated-fat", "g"),
+    "carbohydrates": ("carbohydrates", "g"),
+    "sugars": ("sugars", "g"),
+    "fiber": ("fiber", "g"),
+    "proteins": ("proteins", "g"),
+    "salt": ("salt", "g"),
+}
+
+_write_config = load_write_config()
+
+if _write_config.enabled:
+
+    @mcp.tool
+    async def add_or_update_product(
+        barcode: str,
+        product_name: str | None = None,
+        brands: str | None = None,
+        quantity: str | None = None,
+        categories: str | None = None,
+        ingredients_text: str | None = None,
+        nutrition_data_per: str = "100g",
+        energy_kcal: float | None = None,
+        fat: float | None = None,
+        saturated_fat: float | None = None,
+        carbohydrates: float | None = None,
+        sugars: float | None = None,
+        fiber: float | None = None,
+        proteins: float | None = None,
+        salt: float | None = None,
+    ) -> str:
+        """Create or edit a product in Open Food Facts (WRITE).
+
+        Only the fields you pass are changed; omitted fields are left untouched.
+        This writes to a real, shared database, so provide accurate data taken
+        from the physical product label.
+
+        Args:
+            barcode: Product barcode (digits only). Required.
+            product_name: Product name.
+            brands: Brand(s), comma-separated.
+            quantity: Net quantity, e.g. "400 g".
+            categories: Categories, comma-separated.
+            ingredients_text: Full ingredients list as printed on the label.
+            nutrition_data_per: "100g" (default) or "serving" — the basis for the
+                nutriment values below.
+            energy_kcal, fat, saturated_fat, carbohydrates, sugars, fiber,
+            proteins, salt: Nutriment values (energy in kcal, others in grams)
+                per `nutrition_data_per`.
+        """
+        text_fields = {
+            "product_name": product_name,
+            "brands": brands,
+            "quantity": quantity,
+            "categories": categories,
+            "ingredients_text": ingredients_text,
+        }
+        fields: dict[str, str] = {k: v for k, v in text_fields.items() if v is not None}
+
+        nutriment_args = {
+            "energy_kcal": energy_kcal,
+            "fat": fat,
+            "saturated_fat": saturated_fat,
+            "carbohydrates": carbohydrates,
+            "sugars": sugars,
+            "fiber": fiber,
+            "proteins": proteins,
+            "salt": salt,
+        }
+        has_nutriments = any(v is not None for v in nutriment_args.values())
+        if has_nutriments:
+            fields["nutrition_data_per"] = nutrition_data_per
+            for arg, value in nutriment_args.items():
+                if value is None:
+                    continue
+                off_key, unit = _NUTRIMENT_MAP[arg]
+                fields[f"nutriment_{off_key}"] = str(value)
+                fields[f"nutriment_{off_key}_unit"] = unit
+
+        if not fields:
+            return "Nothing to write: provide at least one field to add or update."
+
+        async with OpenFoodFactsWriteClient(
+            _write_config.username,
+            _write_config.password,
+            base_url=_write_config.base_url,
+            http_basic_auth=_write_config.http_basic_auth,
+        ) as client:
+            try:
+                await client.write_product(barcode, fields)
+            except (OpenFoodFactsError, ValueError) as exc:
+                return f"Error: {exc}"
+
+        product_url = f"{_write_config.base_url}/product/{barcode}"
+        return (
+            f"Saved to Open Food Facts ({_write_config.environment}).\n"
+            f"Updated {len(fields)} field(s) on barcode {barcode}.\n"
+            f"View: {product_url}"
+        )
 
 
 def main() -> None:
