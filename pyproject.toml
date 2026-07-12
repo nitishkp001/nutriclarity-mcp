@@ -23,9 +23,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nitish/nutriclarity-mcp"
-Repository = "https://github.com/nitish/nutriclarity-mcp"
-Issues = "https://github.com/nitish/nutriclarity-mcp/issues"
+Homepage = "https://github.com/nitishkp001/nutriclarity-mcp"
+Repository = "https://github.com/nitishkp001/nutriclarity-mcp"
+Issues = "https://github.com/nitishkp001/nutriclarity-mcp/issues"
 
 [project.scripts]
 nutriclarity-mcp = "nutriclarity_mcp.server:main"

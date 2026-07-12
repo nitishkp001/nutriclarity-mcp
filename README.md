@@ -1,6 +1,6 @@
 # NutriClarity MCP 🥗
 
-[![CI](https://github.com/nitish/nutriclarity-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nitish/nutriclarity-mcp/actions/workflows/ci.yml)
+[![CI](https://github.com/nitishkp001/nutriclarity-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/nitishkp001/nutriclarity-mcp/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/nutriclarity-mcp.svg)](https://pypi.org/project/nutriclarity-mcp/)
 [![Python](https://img.shields.io/pypi/pyversions/nutriclarity-mcp.svg)](https://pypi.org/project/nutriclarity-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -52,7 +52,7 @@ Then ask things like:
 ### Docker
 
 ```bash
-docker run -i --rm ghcr.io/nitish/nutriclarity-mcp
+docker run -i --rm ghcr.io/nitishkp001/nutriclarity-mcp
 ```
 
 MCP config:
@@ -62,7 +62,7 @@ MCP config:
   "mcpServers": {
     "nutriclarity": {
       "command": "docker",
-      "args": ["run", "-i", "--rm", "ghcr.io/nitish/nutriclarity-mcp"]
+      "args": ["run", "-i", "--rm", "ghcr.io/nitishkp001/nutriclarity-mcp"]
     }
   }
 }
@@ -73,7 +73,7 @@ MCP config:
 Requires [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/nitish/nutriclarity-mcp
+git clone https://github.com/nitishkp001/nutriclarity-mcp
 cd nutriclarity-mcp
 uv sync --extra dev        # install deps
 uv run nutriclarity-mcp    # run the server over stdio

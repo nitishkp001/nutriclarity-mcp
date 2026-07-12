@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
-  "name": "io.github.nitish/nutriclarity-mcp",
+  "name": "io.github.nitishkp001/nutriclarity-mcp",
   "description": "Food nutrition data (barcode lookup, search, Nutri-Score/NOVA/Eco-Score, comparison) via Open Food Facts.",
   "repository": {
-    "url": "https://github.com/nitish/nutriclarity-mcp",
+    "url": "https://github.com/nitishkp001/nutriclarity-mcp",
     "source": "github"
   },
   "version": "0.1.0",
@@ -18,7 +18,7 @@
     },
     {
       "registryType": "oci",
-      "identifier": "ghcr.io/nitish/nutriclarity-mcp",
+      "identifier": "ghcr.io/nitishkp001/nutriclarity-mcp",
       "version": "0.1.0",
       "transport": {
         "type": "stdio"
