@@ -1,0 +1,14 @@
+# Smithery deployment config — https://smithery.ai/docs
+# Lets users install this server via Smithery with no local setup.
+startCommand:
+  type: stdio
+  commandFunction: |
+    (config) => ({
+      command: "nutriclarity-mcp",
+      args: [],
+      env: {}
+    })
+  # This server needs no configuration or secrets.
+  configSchema:
+    type: object
+    properties: {}
