@@ -18,6 +18,8 @@ NUTRIENT_ROWS: list[tuple[str, str, str]] = [
     ("sodium", "Sodium", "g"),
 ]
 
+NUTRISCORE_RANK = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
+
 NOVA_DESCRIPTIONS = {
     1: "Unprocessed or minimally processed foods",
     2: "Processed culinary ingredients",
@@ -135,6 +137,44 @@ def format_search_results(products: list[dict[str, Any]], query: str) -> str:
         lines.append(f"   {energy_str}{score_str}")
     lines.append("")
     lines.append("Use get_product_by_barcode with a barcode above for full details.")
+    return "\n".join(lines)
+
+
+def nutriscore_rank(product: dict[str, Any]) -> int | None:
+    """Numeric rank of a product's Nutri-Score (1=A best .. 5=E worst)."""
+    grade = (product.get("nutriscore_grade") or "").lower()
+    return NUTRISCORE_RANK.get(grade)
+
+
+def format_alternatives(
+    original: dict[str, Any], alternatives: list[dict[str, Any]]
+) -> str:
+    """Present healthier same-category alternatives to a product."""
+    orig_grade = (original.get("nutriscore_grade") or "").upper() or "?"
+    lines = [
+        f"{_name(original)} has Nutri-Score {orig_grade}.",
+        "",
+    ]
+    if not alternatives:
+        lines.append(
+            "No products with a better Nutri-Score were found in the same category."
+        )
+        return "\n".join(lines)
+
+    lines.append("Healthier alternatives in the same category (better Nutri-Score):")
+    lines.append("")
+    for i, product in enumerate(alternatives, start=1):
+        grade = (product.get("nutriscore_grade") or "").upper() or "?"
+        nutriments = product.get("nutriments") or {}
+        energy = _nutriment(nutriments, "energy-kcal")
+        sugars = _nutriment(nutriments, "sugars")
+        details = []
+        if energy is not None:
+            details.append(f"{energy:g} kcal")
+        if sugars is not None:
+            details.append(f"{sugars:g} g sugar")
+        detail_str = f" ({', '.join(details)} /100g)" if details else ""
+        lines.append(f"{i}. Nutri-Score {grade} — {_name(product)}{detail_str}")
     return "\n".join(lines)
 
 

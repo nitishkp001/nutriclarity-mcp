@@ -14,10 +14,12 @@ from .client import (
 )
 from .config import load_write_config
 from .formatters import (
+    format_alternatives,
     format_comparison,
     format_product,
     format_scores,
     format_search_results,
+    nutriscore_rank,
 )
 
 mcp = FastMCP(
@@ -228,6 +230,70 @@ if _write_config.enabled:
             f"Updated {len(fields)} field(s) on barcode {barcode}.\n"
             f"View: {product_url}"
         )
+
+
+@mcp.tool
+async def find_healthier_alternative(barcode: str, limit: int = 5) -> str:
+    """Suggest healthier products in the same category as the given product.
+
+    Looks up the product, then searches its category for items with a better
+    (lower) Nutri-Score, returning the healthiest matches first.
+
+    Args:
+        barcode: The product barcode, digits only.
+        limit: Maximum number of alternatives to return (1-10, default 5).
+    """
+    limit = max(1, min(limit, 10))
+
+    async with OpenFoodFactsClient() as client:
+        try:
+            product = await client.get_product(barcode)
+        except ProductNotFoundError as exc:
+            return str(exc)
+        except (OpenFoodFactsError, ValueError) as exc:
+            return f"Error: {exc}"
+
+        base_rank = nutriscore_rank(product)
+        if base_rank is None:
+            return (
+                f"{product.get('product_name') or barcode} has no Nutri-Score, so "
+                "healthier alternatives can't be ranked."
+            )
+        if base_rank == 1:
+            return (
+                f"{product.get('product_name') or barcode} already has Nutri-Score A "
+                "— it's the healthiest grade."
+            )
+
+        # Walk categories from most specific to broadest and stop at the first
+        # one that actually contains healthier products, so suggestions stay in
+        # the closest matching category rather than drifting to a broad parent.
+        categories = product.get("categories_tags") or []
+        own_code = product.get("code", "")
+        alternatives: list[dict] = []
+        for category in reversed(categories):
+            try:
+                candidates = await client.search_by_category(category, page_size=50)
+            except (OpenFoodFactsError, ValueError):
+                continue
+            seen: set[str] = {own_code}
+            better: list[dict] = []
+            for cand in candidates:
+                code = cand.get("code")
+                rank = nutriscore_rank(cand)
+                if not code or code in seen or rank is None:
+                    continue
+                if rank < base_rank:
+                    seen.add(code)
+                    better.append(cand)
+            if better:
+                alternatives = better
+                break
+
+        alternatives.sort(key=lambda p: (nutriscore_rank(p) or 99))
+        alternatives = alternatives[:limit]
+
+    return format_alternatives(product, alternatives)
 
 
 def main() -> None:

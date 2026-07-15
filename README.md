@@ -20,6 +20,7 @@ food products database. No API key required.
 | `search_products(query, page_size=5)` | Search products by name or brand; returns barcodes + a nutrition summary. |
 | `get_nutrition_scores(barcode)` | Nutri-Score (A–E), NOVA processing group (1–4), and Eco-Score for a product. |
 | `compare_products(barcodes)` | Side-by-side per-100g comparison table for 2+ products. |
+| `find_healthier_alternative(barcode, limit=5)` | Suggest same-category products with a better Nutri-Score. |
 | `add_or_update_product(...)` | **Optional / opt-in.** Create or edit a product. Only enabled when credentials are set (see below). |
 
 Reading needs **no API key or account** — it's open data. Only the optional write

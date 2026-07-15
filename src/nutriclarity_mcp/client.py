@@ -32,9 +32,11 @@ PRODUCT_FIELDS = [
     "quantity",
     "serving_size",
     "categories",
+    "categories_tags",
     "ingredients_text",
     "allergens",
     "nutriscore_grade",
+    "nutriscore_score",
     "nova_group",
     "ecoscore_grade",
     "nutriments",
@@ -120,6 +122,46 @@ class OpenFoodFactsClient:
                     "action": "process",
                     "json": 1,
                     "page_size": page_size,
+                    "fields": ",".join(PRODUCT_FIELDS),
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except httpx.HTTPError as exc:
+            raise OpenFoodFactsError(f"Failed to reach Open Food Facts: {exc}") from exc
+        except ValueError as exc:
+            raise OpenFoodFactsError("Open Food Facts returned malformed JSON.") from exc
+
+        return data.get("products", []) or []
+
+    async def search_by_category(
+        self,
+        category: str,
+        *,
+        page_size: int = 25,
+        sort_by: str = "nutriscore_score",
+    ) -> list[dict[str, Any]]:
+        """List products in a category, sorted (default: best Nutri-Score first).
+
+        `category` is an Open Food Facts category tag such as "en:breakfast-cereals".
+        """
+        category = category.strip()
+        if not category:
+            raise ValueError("Category must not be empty.")
+
+        page_size = max(1, min(page_size, 50))
+
+        try:
+            resp = await self._client.get(
+                "/cgi/search.pl",
+                params={
+                    "action": "process",
+                    "tagtype_0": "categories",
+                    "tag_contains_0": "contains",
+                    "tag_0": category,
+                    "sort_by": sort_by,
+                    "page_size": page_size,
+                    "json": 1,
                     "fields": ",".join(PRODUCT_FIELDS),
                 },
             )

@@ -13,10 +13,12 @@ from nutriclarity_mcp.client import (
     ProductNotFoundError,
 )
 from nutriclarity_mcp.formatters import (
+    format_alternatives,
     format_comparison,
     format_product,
     format_scores,
     format_search_results,
+    nutriscore_rank,
 )
 
 NUTELLA = {
@@ -127,3 +129,31 @@ def test_format_comparison():
     assert "Nutella" in out
     assert "Oat Drink" in out
     assert "Energy" in out
+
+
+def test_nutriscore_rank():
+    assert nutriscore_rank({"nutriscore_grade": "a"}) == 1
+    assert nutriscore_rank({"nutriscore_grade": "E"}) == 5
+    assert nutriscore_rank({}) is None
+
+
+def test_format_alternatives_with_results():
+    out = format_alternatives(NUTELLA, [OATMILK])
+    assert "Nutella" in out
+    assert "Nutri-Score B" in out
+    assert "Oat Drink" in out
+
+
+def test_format_alternatives_empty():
+    out = format_alternatives(NUTELLA, [])
+    assert "No products with a better Nutri-Score" in out
+
+
+@respx.mock
+async def test_search_by_category():
+    respx.get(f"{BASE_URL}/cgi/search.pl").mock(
+        return_value=httpx.Response(200, json={"products": [OATMILK]})
+    )
+    async with OpenFoodFactsClient() as client:
+        products = await client.search_by_category("en:spreads")
+    assert products[0]["product_name"] == "Oat Drink"
